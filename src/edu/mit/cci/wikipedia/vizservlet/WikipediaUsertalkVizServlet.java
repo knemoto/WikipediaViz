@@ -1,10 +1,15 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.vizservlet;
 
-import edu.mit.cci.wikipediaviz.PMF;
+import edu.mit.cci.wikipedia.collector.GetRevisions;
+import edu.mit.cci.wikipedia.collector.GetUsertalkNetwork;
+import edu.mit.cci.wikipedia.util.MapSorter;
+import edu.mit.cci.wikipedia.util.Processing;
+import edu.mit.cci.wikipedia.vizservlet.PMF;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Logger;
@@ -17,9 +22,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 @SuppressWarnings("serial")
-public class WikipediaEditVizServlet extends HttpServlet {
+public class WikipediaUsertalkVizServlet extends HttpServlet {
 
-	private static final Logger log = Logger.getLogger(WikipediaEditVizServlet.class.getName());
+	private static final Logger log = Logger.getLogger(WikipediaUsertalkVizServlet.class.getName());
 
 	public void doGet(HttpServletRequest request, HttpServletResponse response)
 	throws IOException, ServletException {
@@ -55,7 +60,9 @@ public class WikipediaEditVizServlet extends HttpServlet {
 			int myNumber = -1;
 			// UTF-8で入力を受付
 			request.setCharacterEncoding("UTF-8");
-			// Get arguments
+			
+			
+			// Set arguments
 			String pageTitle = request.getParameter("name"); // WikiPedia article title
 			String loginUser = "";
 			if (request.getParameter("user") != null)
@@ -77,7 +84,7 @@ public class WikipediaEditVizServlet extends HttpServlet {
 			if (request.getParameter("nodelimit") != null) {
 				nodeLimit = request.getParameter("nodelimit");
 			}
-			// Canvas size
+			// Size of the Canvas
 			String size = "300";
 			if (request.getParameter("size") != null) {
 				size = request.getParameter("size");
@@ -112,7 +119,7 @@ public class WikipediaEditVizServlet extends HttpServlet {
 					log.info("No cached");
 					
 					// Get # of edits on the pageTitle
-					String download = gr.getArticleRevisions(lang, pageTitle,limit);
+					String download = gr.getArticleRevisions(lang,pageTitle,limit);
 					String[] line = download.split("\n");
 					for (int i = 0; i < line.length; i++) {
 						String[] arr = line[i].split("\t");
@@ -122,7 +129,7 @@ public class WikipediaEditVizServlet extends HttpServlet {
 						timestamp = timestamp.replaceAll("Z", "");
 						data += arr[0] + "\t" + arr[1] + "\t" + timestamp + "\t0\t" + arr[4] + "\n";
 						
-						// Storing data to cache
+						// Storing data
 						ArticleCache articleCache = new ArticleCache(arr[0],arr[1],df.parse(timestamp),Integer.parseInt(arr[4]));
 						PersistenceManager pmWriter = PMF.get().getPersistenceManager();
 						try {
@@ -170,38 +177,118 @@ public class WikipediaEditVizServlet extends HttpServlet {
 				
 				// Sort data, with second parameter: getting Top N editors
 				//log.info(data);
-				lines = gr.sortMap(data,0); // Get all editors' rank
-				
+				lines = new MapSorter().sortMap(data,Integer.parseInt(nodeLimit));
+
+				// Generate HTML code from the edit history
+				tableContents += "<table>" + eol;
+				tableContents += "<tbody>" + eol;
+				int sumNum = 0;
 				String userName_editSize = "";
 				for (int i = 0; i < lines.size(); i++) {
+					
 					String name = lines.get(i).split("\t")[1];
+					String num = lines.get(i).split("\t")[0];
 					String editSize = lines.get(i).split("\t")[2];
 					userName_editSize += name + "\t" + editSize + "\n";
+					sumNum += Integer.parseInt(num);
+					if (name.equals(loginUser)) {
+						includeMe = true;
+						myNumber = i;
+					}
+					tableContents += "<tr>" + eol;
+					tableContents += "<td>" + name + "</td>" + eol;
+					tableContents += "<td>" + num + "</td>" + eol;
+					tableContents += "</tr>" + eol;
 				}
-				
+				// top10以外の編集回数
+				/*
+				tableContents += "<tr>" + eol;
+				tableContents += "<td>Others</td>" + eol;
+				tableContents += "<td>" + String.valueOf(dataSize-sumNum) + "</td>" + eol;
+				tableContents += "</tr>" + eol;
+				 */
+				tableContents += "</tbody>" + eol;
+				tableContents += "</table>" + eol;
+				tableContents += "<p id =\"map\"></p>" + eol;
+
 				// Get absolute path to skeleton file
+				//String path = context.getRealPath("/skelton/skelton_code.js");
 				String path = context.getRealPath("/skelton/skelton_spring.js");
 
+				// 多次元尺度構成法でノードの位置を算出する
+				//model.ScaleDown sd = new model.ScaleDown();
+				//sd.setPath(path);
 				String nodes = "";
 				for (int i = 0; i < lines.size(); i++) {
 					// Name \t # of edits
 					nodes += lines.get(i).split("\t")[1] + "\t" + lines.get(i).split("\t")[0] + "\n";
 				}
-				log.info(nodes);
-				// Get edge data
-				// From editor \t To editor \t weight
-				log.info(data);
-				String edges = gr.getSeqColabNetwork(data);
-				log.info(edges);
+
+				// Nodeに自分が含まれていない場合は、自分を追加する
+				if (!includeMe && loginUser.length() > 0) {
+					nodes += loginUser + "\t20\n";
+					myNumber = 11;
+				}
+
+				// ここもキャッシュ処理
+				/*
+				String edgePath = "";
+				if (myNumber == 11) {
+					edgePath = context.getRealPath("cache/Edge_" + pageTitle + "+" + loginUser + ".txt");
+				} else {
+					edgePath = context.getRealPath("cache/Edge_" + pageTitle + ".txt");
+				}*/
+				
+				// Collect social ties among editors based on comment exchange on User talk 
+				pm = PMF.get().getPersistenceManager();
+				
+				query = "select from " + UsertalkCache.class.getName() + " where pageTitle==\'" + pageTitle.replaceAll("\'", "\\\\\'") + "\' && author==\'" + loginUser + "\'";
+				List<UsertalkCache> usertalkCaches = (List<UsertalkCache>)pm.newQuery(query).execute();
+				// No cache
+				String edges = "";
+				if (usertalkCaches.isEmpty()) {
+					edges = GetUsertalkNetwork.getNetwork(lang, nodes);
+					UsertalkCache usertalkCache = new UsertalkCache(pageTitle,loginUser,edges,(new Date()));
+					PersistenceManager pmWriter = PMF.get().getPersistenceManager();
+					try {
+						pmWriter.makePersistent(usertalkCache);
+					} finally {
+						pmWriter.close();
+					}
+				}
+				// Cached and use cache
+				else if (!usertalkCaches.isEmpty() && cacheFlag){
+					for(UsertalkCache uc:usertalkCaches) {
+						edges = uc.getNetwork();
+					}
+				}
+				// Cached and not use cache
+				else if (!usertalkCaches.isEmpty() && !cacheFlag) {
+					// Clear cached data
+					for(UsertalkCache uc:usertalkCaches) {
+						pm.deletePersistent(uc);
+					}
+					// Get data
+					edges = GetUsertalkNetwork.getNetwork(lang, nodes);
+					UsertalkCache usertalkCache = new UsertalkCache(pageTitle,loginUser,edges,(new Date()));
+					PersistenceManager pmWriter = PMF.get().getPersistenceManager();
+					try {
+						pmWriter.makePersistent(usertalkCache);
+					} finally {
+						pmWriter.close();
+					}
+				}
+				pm.close();
+				
 				if (edges.length() > 0) {
-					//log.info(nodes);
-					//log.info(edges);
+					log.info(nodes);
+					log.info(edges);
 					//Optimization op = new Optimization();
-					//String location = op.run(nodes, edges, Integer.valueOf(size), Integer.valueOf(size));
+					//String location = op.run(nodes, edges, Integer.parseInt(size), Integer.parseInt(size));
 					//log.info("Location\n" + location);
 					Processing pro = new Processing();
 					//code = pro.processingCode(location, edges, loginUser, path, userName_editSize, size, size);
-					code = pro.processingCode(nodes, edges, loginUser, path, userName_editSize, size);
+					code = pro.processingCode(nodes, edges, path, size);
 					//log.info("Processing code\n" + code);
 
 					// 多次元尺度構成法の場合
@@ -214,6 +301,8 @@ public class WikipediaEditVizServlet extends HttpServlet {
 
 				// processingの起動
 				responseStr += "window.onload=function(){" + eol;
+				
+				responseStr += "jQuery(\"table\").treemap(" + size + "," + size + ",{dataCell:1,labelCell:0});" + eol;
 				
 				responseStr += "var canvas = document.getElementsByTagName(\'canvas\')[0];" + eol;
 				// Processingのソースコードが書かれた要素を参照

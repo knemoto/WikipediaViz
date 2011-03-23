@@ -1,4 +1,4 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.vizservlet;
 
 import java.io.IOException;
 import javax.servlet.http.*;

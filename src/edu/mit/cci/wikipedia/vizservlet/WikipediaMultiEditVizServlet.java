@@ -1,6 +1,9 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.vizservlet;
 
-import edu.mit.cci.wikipediaviz.PMF;
+import edu.mit.cci.wikipedia.collector.GetRevisions;
+import edu.mit.cci.wikipedia.util.NetworkGenerator;
+import edu.mit.cci.wikipedia.util.Processing;
+import edu.mit.cci.wikipedia.vizservlet.PMF;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -57,57 +60,47 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 
 			String tableContents = "";
 			String code = "";
-			boolean includeMe = false;
-			int myNumber = -1;
-			// UTF-8で入力を受付
+			
 			request.setCharacterEncoding("UTF-8");
 			// Get arguments
 			String[] pageTitles = request.getParameter("name").split("|"); // WikiPedia article title
-			String loginUser = "";
-			if (request.getParameter("user") != null)
-				loginUser = request.getParameter("user");
-			boolean cacheFlag = true;
+			
+			boolean CACHE = true;
 			if (request.getParameter("cache") != null) {
 				if (request.getParameter("cache").equals("true"))
-					cacheFlag = true;
+					CACHE = true;
 				else
-					cacheFlag = false;
+					CACHE = false;
 			}
 			// # of edits (limit x 500 edits)
-			String limit = "1"; // default: last 500 edits
+			String REV_LIMIT = "1"; // default: last 500 edits
 			if (request.getParameter("limit") != null) {
-				limit = request.getParameter("limit");
+				REV_LIMIT = request.getParameter("limit");
 			}
 			// # of nodes 
-			String nodeLimit = "10"; // default: 10 nodes
+			String NODE_LIMIT = "10"; // default: 10 nodes
 			if (request.getParameter("nodelimit") != null) {
-				nodeLimit = request.getParameter("nodelimit");
+				NODE_LIMIT = request.getParameter("nodelimit");
 			}
 			// Canvas size
-			String size = "300";
+			String CANVAS_SIZE = "300";
 			if (request.getParameter("size") != null) {
-				size = request.getParameter("size");
+				CANVAS_SIZE = request.getParameter("size");
 			}
 			// Language
-			String lang = "en";
+			String LANG = "en";
 			if (request.getParameter("lang") != null) {
-				lang = request.getParameter("lang");
+				LANG = request.getParameter("lang");
 			}
 			
 			GetRevisions gr = new GetRevisions();
 			 // User name
-			//Enumeration<String> params = request.getParameterNames();
 			Set<String> dataSet = new HashSet<String>();
+
 			for (String pageTitle:pageTitles) {
 				if (pageTitle != null) {
-					if (loginUser.length() == 0){
-						//loginUser = "nil";
-					}
 					log.info("name " + pageTitle);
-					log.info("user " + loginUser);
-	
-					List<String> lines = new LinkedList<String>();
-	
+					
 					String data = "";
 					// Searching cache
 					PersistenceManager pm = PMF.get().getPersistenceManager();
@@ -115,13 +108,16 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 					String query = "select from " + ArticleCache.class.getName() + " where pageTitle==\'" + pageTitle.replaceAll("\'", "\\\\\'") + "\'";
 					List<ArticleCache> articleCaches = (List<ArticleCache>)pm.newQuery(query).execute();
 					
-					
 					// No cache
-					if (articleCaches.isEmpty()) {
-						log.info("No cached");
-						
+					if (articleCaches.isEmpty() || (!articleCaches.isEmpty() && !CACHE)) {
+						if (!articleCaches.isEmpty()) {
+							// Clear cached data
+							for(ArticleCache ac:articleCaches) {
+								pm.deletePersistent(ac);
+							}
+						}
 						// Get # of edits on the pageTitle
-						String download = gr.getArticleRevisions(lang, pageTitle,limit);
+						String download = gr.getArticleRevisions(LANG, pageTitle, REV_LIMIT);
 						String[] line = download.split("\n");
 						for (int i = 0; i < line.length; i++) {
 							String[] arr = line[i].split("\t");
@@ -142,53 +138,14 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 						}
 					}
 					// Already cached and using cache
-					else if (!articleCaches.isEmpty() && cacheFlag){
+					else if (!articleCaches.isEmpty() && CACHE){
 						log.info("Cashed");
 						for(ArticleCache ac:articleCaches) {
 							data += ac.getPageTitle() + "\t" + ac.getAuthor() + "\t" + df.format(ac.getDate()) + "\t0\t" + String.valueOf(ac.getSize()) + "\n";
 						}
 					}
-					// Already cached but not using it
-					else if (!articleCaches.isEmpty() && !cacheFlag) {
-						// Clear cached data
-						for(ArticleCache ac:articleCaches) {
-							pm.deletePersistent(ac);
-						}
-						// Get # of edits on the pageTitle
-						String download = gr.getArticleRevisions(lang, pageTitle, limit);
-						String[] line = download.split("\n");
-						for (int i = 0; i < line.length; i++) {
-							String[] arr = line[i].split("\t");
-							//arr[0] pageTitle, arr[1] userName, arr[2] timestamp, arr[3] minor, arr[4] size
-							String timestamp = arr[2];
-							timestamp = timestamp.replaceAll("T", " ");
-							timestamp = timestamp.replaceAll("Z", "");
-							data += arr[0] + "\t" + arr[1] + "\t" + timestamp + "\t0\t" + arr[4] + "\n";
-							
-							// Storing data
-							ArticleCache articleCache = new ArticleCache(arr[0],arr[1],df.parse(timestamp),Integer.parseInt(arr[4]));
-							PersistenceManager pmWriter = PMF.get().getPersistenceManager();
-							try {
-								pmWriter.makePersistent(articleCache);
-							} finally {
-								pmWriter.close();
-							}
-						}
-					}
 					pm.close();
-					
-					// Sort data, with second parameter: getting Top N editors
-					//log.info(data);
-					//lines = gr.sortMap(data,0); // Get all editors' rank
 					dataSet.add(data);
-					
-					// remove?
-					/*String userName_editSize = "";
-					for (int i = 0; i < lines.size(); i++) {
-						String name = lines.get(i).split("\t")[1];
-						String editSize = lines.get(i).split("\t")[2];
-						userName_editSize += name + "\t" + editSize + "\n";
-					}*/
 				}
 			}
 			// Process dataSet<data>
@@ -224,7 +181,7 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 			
 			
 			// Get absolute path to skeleton file
-			String path = context.getRealPath("/skelton/skelton_spring.js");
+			String pathToSkelton = context.getRealPath("/skelton/skelton_spring.js");
 
 			String nodes = "";
 			
@@ -233,10 +190,6 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 				int numOfEdits = nodeEditMap.get(editorName);
 				nodes += editorName + "\t" + numOfEdits + "\t" + numOfArticles + "\n";
 			}
-			//for (int i = 0; i < lines.size(); i++) {
-				// Name \t # of edits
-				//nodes += lines.get(i).split("\t")[1] + "\t" + lines.get(i).split("\t")[0] + "\n";
-			//}
 			
 			log.info(nodes);
 			// Get edge data
@@ -246,7 +199,7 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 			int[][] matrix = new int[nodeList.size()][nodeList.size()];
 			
 			for (String data:dataSet) {
-				String[] edges = gr.getSeqColabNetwork(data).split("\n");
+				String[] edges = new NetworkGenerator().getSeqColabNetworkFromRevisions(data).split("\n"); // Get network data from revision history data
 				for (String edge:edges) {
 					String name1 = edge.split("\t")[0];
 					String name2 = edge.split("\t")[1];
@@ -265,17 +218,8 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 			if (edges.length() > 0) {
 				//log.info(nodes);
 				//log.info(edges);
-				//Optimization op = new Optimization();
-				//String location = op.run(nodes, edges, Integer.valueOf(size), Integer.valueOf(size));
-				//log.info("Location\n" + location);
-				Processing pro = new Processing();
-				//code = pro.processingCode(location, edges, loginUser, path, userName_editSize, size, size);
-				code = pro.processingCode(nodes, edges, loginUser, path, "", size);
+				code = new Processing().processingCode(nodes, edges, pathToSkelton, CANVAS_SIZE);
 				//log.info("Processing code\n" + code);
-
-				// 多次元尺度構成法の場合
-				//sd.setupData(nodes,edges);
-				//code = sd.processingCode(sd.scaledown(0.01),edges,loginUser);
 			}
 
 			//出力ストリームを取得する
@@ -301,7 +245,7 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 			responseStr += "</head>" + eol;
 			responseStr += "<body>" + eol;
 
-			responseStr += "<div><canvas width=\"" + size + "\" height=\"" + size + "\"></canvas></div>" + eol;
+			responseStr += "<div><canvas width=\"" + CANVAS_SIZE + "\" height=\"" + CANVAS_SIZE + "\"></canvas></div>" + eol;
 
 			responseStr += tableContents;
 

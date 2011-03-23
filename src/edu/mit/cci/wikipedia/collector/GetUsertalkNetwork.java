@@ -1,4 +1,4 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.collector;
 
 import java.io.*;
 import java.net.*;
@@ -15,6 +15,7 @@ import java.util.StringTokenizer;
 import java.util.logging.Logger;
 
 import org.w3c.dom.Node;
+
 
 
 public class GetUsertalkNetwork {

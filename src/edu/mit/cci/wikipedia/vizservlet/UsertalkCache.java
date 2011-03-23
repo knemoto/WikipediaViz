@@ -1,4 +1,4 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.vizservlet;
 
 import java.util.Date;
 import javax.jdo.annotations.IdGeneratorStrategy;
@@ -6,10 +6,12 @@ import javax.jdo.annotations.IdentityType;
 import javax.jdo.annotations.PersistenceCapable;
 import javax.jdo.annotations.Persistent;
 import javax.jdo.annotations.PrimaryKey;
+
+import com.google.appengine.api.datastore.Text;
 import com.google.appengine.api.users.User;
 
 @PersistenceCapable(identityType = IdentityType.APPLICATION)
-public class ArticleCache {
+public class UsertalkCache {
 	@PrimaryKey
 	@Persistent(valueStrategy = IdGeneratorStrategy.IDENTITY)
 	private Long id;
@@ -18,23 +20,27 @@ public class ArticleCache {
 	private String author;
 	
 	@Persistent
-	private String pageTitle;
+	private Text network;
 	
 	@Persistent
-	private int size;
+	private String pageTitle;
 	
 	@Persistent
 	private Date date;
 	
-	public ArticleCache(String pageTitle, String author, Date date, int size) {
+	public UsertalkCache(String pageTitle, String author, String _network, Date date) {
+		this.network = new Text(_network);
 		this.author = author;
 		this.pageTitle = pageTitle;
 		this.date = date;
-		this.size = size;
 	}
 	
 	public Long getId() {
 		return id;
+	}
+	
+	public String getNetwork() {
+		return network.getValue();
 	}
 	
 	public String getAuthor() {
@@ -49,23 +55,20 @@ public class ArticleCache {
 		return date;
 	}
 	
-	public int getSize() {
-		return size;
-	}
-	
-	public void setAuthor(String author) {
-		this.author = author;
+	public void setNetwork(String _network) {
+		this.network = new Text(_network);
 	}
 	
 	public void setPageTitle(String pageTitle) {
 		this.pageTitle = pageTitle;
 	}
 	
+	public void setAuthor(String author) {
+		this.author = author;
+	}
+	
 	public void setDate(Date date) {
 		this.date = date;
 	}
 	
-	public void setSize(int size) {
-		this.size = size;
-	}
 }

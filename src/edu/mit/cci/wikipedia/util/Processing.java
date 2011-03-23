@@ -1,4 +1,4 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.util;
 
 import java.io.*;
 import java.util.*;
@@ -9,7 +9,7 @@ public class Processing {
 	public Processing(){}
 
 	//public String processingCode(String location,String edges, String loginUser, String path, String userName_editSize, String size) {
-	public String processingCode(String nodes,String edges, String loginUser, String path, String userName_editSize, String size) {
+	public String processingCode(String nodes,String edges, String path, String size) {
 		//List<String> user = new LinkedList<String>();
 		String code = "";
 		String eol = "\n";
@@ -33,9 +33,6 @@ public class Processing {
 			} else {
 				color = "0x80000000";
 			}
-			
-			if (name.equals(loginUser))
-				color = "0x80FF0000";
 			
 			nodeCode += "engine.addParticle(new Particle(\"" + name + "\", random(0, " + size + "), random(0, " + size + "), " + nodeSize + ", 0, 0, " + color + "));" + eol;
 		}

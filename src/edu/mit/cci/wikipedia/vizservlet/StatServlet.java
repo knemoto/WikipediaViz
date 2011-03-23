@@ -1,4 +1,4 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.vizservlet;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -27,6 +27,9 @@ import javax.xml.transform.stream.StreamResult;
 import org.mortbay.log.Log;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+
+import edu.mit.cci.wikipedia.collector.GetRevisions;
+import edu.mit.cci.wikipedia.util.TimeWindowCount;
 
 public class StatServlet extends HttpServlet {
 

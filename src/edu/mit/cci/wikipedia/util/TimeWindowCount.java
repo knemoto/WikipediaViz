@@ -1,4 +1,4 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.util;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

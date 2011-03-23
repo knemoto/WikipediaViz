@@ -1,4 +1,4 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.vizservlet;
 
 import javax.jdo.JDOHelper;
 import javax.jdo.PersistenceManagerFactory;

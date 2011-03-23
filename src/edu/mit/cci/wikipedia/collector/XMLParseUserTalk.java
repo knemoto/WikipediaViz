@@ -1,8 +1,10 @@
-package edu.mit.cci.wikipediaviz;
+package edu.mit.cci.wikipedia.collector;
 
 import javax.xml.parsers.*;
 import org.xml.sax.*;
 import org.xml.sax.helpers.*;
+
+
 import java.io.*;
 
 public class XMLParseUserTalk extends DefaultHandler {
