@@ -1,4 +1,11 @@
-<!-- Indices written at Fri, 25 Mar 2011 01:52:23 UTC -->
+<!-- Indices written at Sat, 26 Mar 2011 17:20:26 UTC -->
 
-<datastore-indexes/>
+<datastore-indexes>
 
+    <!-- Used 10 times in query history -->
+    <datastore-index kind="ArticleCache" ancestor="false" source="auto">
+        <property name="pageTitle" direction="asc"/>
+        <property name="date" direction="asc"/>
+    </datastore-index>
+
+</datastore-indexes>
