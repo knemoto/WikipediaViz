@@ -78,7 +78,7 @@ var ParticleEngine = function() {
 		var particle1 = this.findParticle(label1);
 		var particle2 = this.findParticle(label2);
 		if (particle1 != null && particle2 != null) {
-			this.addSpring(new Spring(particle1, particle2, thick, 60, 0.02));
+			this.addSpring(new Spring(particle1, particle2, thick, 100, 0.02));
 		}
 	};
 }
