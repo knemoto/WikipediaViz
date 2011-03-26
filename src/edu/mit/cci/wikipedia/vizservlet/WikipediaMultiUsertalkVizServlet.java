@@ -59,11 +59,8 @@ public class WikipediaMultiUsertalkVizServlet extends HttpServlet {
 
 			String tableContents = "";
 			String code = "";
-			boolean includeMe = false;
-			int myNumber = -1;
-			// UTF-8で入力を受付
+
 			request.setCharacterEncoding("UTF-8");
-			
 			
 			// Set arguments
 			//String pageTitle = request.getParameter("name"); // WikiPedia article title

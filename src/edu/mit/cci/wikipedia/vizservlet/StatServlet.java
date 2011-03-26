@@ -3,12 +3,10 @@ package edu.mit.cci.wikipedia.vizservlet;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.FileReader;
-import java.io.FileWriter;
 
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.List;
 import java.util.logging.Logger;
 
 import javax.jdo.PersistenceManager;
@@ -17,28 +15,17 @@ import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-
-import org.mortbay.log.Log;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 
 import edu.mit.cci.wikipedia.collector.GetRevisions;
 import edu.mit.cci.wikipedia.util.TimeWindowCount;
 
+@SuppressWarnings("serial")
 public class StatServlet extends HttpServlet {
 
-	private static final Logger log = Logger.getLogger(WikipediaUsertalkVizServlet.class.getName());
+	private static final Logger log = Logger.getLogger(StatServlet.class.getName());
 	
 	public void doGet(HttpServletRequest request, HttpServletResponse response)
 	throws ServletException, IOException {
-
-		
 		
 		PrintWriter out = null;
 		String output = "";
@@ -53,9 +40,6 @@ public class StatServlet extends HttpServlet {
 				if (request.getParameter("lang") != null) {
 					lang = request.getParameter("lang");
 				}
-				//String data = "";
-				//ServletContext context = this.getServletContext();
-				//String dataPath = context.getRealPath("cache/Data_" + pageTitle + ".txt");
 				
 				PersistenceManager pm = PMF.get().getPersistenceManager();
 				String query = "select from " + ArticleCache.class.getName() + " where pageTitle==\'" + pageTitle.replaceAll("\'", "\\\\\'") + "\' order by date";
@@ -134,8 +118,6 @@ public class StatServlet extends HttpServlet {
 			//Get output stream
 			out = response.getWriter();
 			out.println(output);
-
-
 		}
 		catch(Exception e) {
 			e.printStackTrace();
@@ -147,7 +129,5 @@ public class StatServlet extends HttpServlet {
 				}catch(Exception e){}
 			}
 		}
-
 	}
-
 }

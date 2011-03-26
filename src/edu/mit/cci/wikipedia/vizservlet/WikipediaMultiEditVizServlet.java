@@ -63,8 +63,14 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 			
 			request.setCharacterEncoding("UTF-8");
 			// Get arguments
-			String[] pageTitles = request.getParameter("name").split("|"); // WikiPedia article title
-			
+			String pageTitleStr = request.getParameter("name"); // WikiPedia article title
+			String[] pageTitles;
+			if (pageTitleStr.indexOf("|") > 0)
+				pageTitles = pageTitleStr.split("\\|");
+			else {
+				pageTitles = new String[1];
+				pageTitles[0] = pageTitleStr;
+			}
 			boolean CACHE = true;
 			if (request.getParameter("cache") != null) {
 				if (request.getParameter("cache").equals("true"))
@@ -118,9 +124,10 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 						}
 						// Get # of edits on the pageTitle
 						String download = gr.getArticleRevisions(LANG, pageTitle, REV_LIMIT);
-						String[] line = download.split("\n");
-						for (int i = 0; i < line.length; i++) {
-							String[] arr = line[i].split("\t");
+						String[] lines = download.split("\n");
+						for (String line : lines) {
+							log.info(line);
+							String[] arr = line.split("\t");
 							//arr[0] pageTitle, arr[1] userName, arr[2] timestamp, arr[3] minor, arr[4] size
 							String timestamp = arr[2];
 							timestamp = timestamp.replaceAll("T", " ");
@@ -155,8 +162,9 @@ public class WikipediaMultiEditVizServlet extends HttpServlet {
 			// nodeEditMap key:node name, value: sum # of edits
 			Map<String,Integer> nodeEditMap = new HashMap<String,Integer>();
 			for (String data:dataSet) {
-				String[] lines = data.split("\t");
+				String[] lines = data.split("\n");
 				for (String line:lines) {
+					log.info(line);
 					String pageTitle = line.split("\t")[0];
 					String editorName = line.split("\t")[1];
 					

@@ -221,7 +221,7 @@ public class WikipediaUsertalkVizServlet extends HttpServlet {
 				String nodes = "";
 				for (int i = 0; i < lines.size(); i++) {
 					// Name \t # of edits
-					nodes += lines.get(i).split("\t")[1] + "\t" + lines.get(i).split("\t")[0] + "\n";
+					nodes += lines.get(i).split("\t")[1] + "\t" + lines.get(i).split("\t")[0] + "\t1\n";
 				}
 
 				// Nodeに自分が含まれていない場合は、自分を追加する
